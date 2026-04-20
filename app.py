@@ -15,7 +15,7 @@ from services.validation_rules import check_mandatory_fields
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
 # -------------------------
-# 🎨 CLEAN UI (NO DARK MODE)
+# 🎨 CLEAN UI
 # -------------------------
 st.markdown("""
 <style>
@@ -51,6 +51,14 @@ st.markdown("""
     text-align:center;
 }
 
+.log-box {
+    background:#f8fafc;
+    padding:10px;
+    border-radius:8px;
+    font-size:14px;
+    white-space:pre-wrap;
+}
+
 .success { color:#16a34a; }
 .error { color:#dc2626; }
 .warning { color:#f59e0b; }
@@ -68,15 +76,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------------------
-# PIPELINE PLACEHOLDER
+# PIPELINE
 # -------------------------
 pipeline_placeholder = st.empty()
 
 def update_pipeline(step):
     pipeline_placeholder.markdown(f"""
-    <div class="pipeline">
-    {step}
-    </div>
+    <div class="pipeline">{step}</div>
+    """, unsafe_allow_html=True)
+
+# -------------------------
+# LOG FUNCTION
+# -------------------------
+def show_log(title, content):
+    st.markdown(f"""
+    <details>
+    <summary><b>{title}</b></summary>
+    <div class="log-box">{content}</div>
+    </details>
     """, unsafe_allow_html=True)
 
 # -------------------------
@@ -98,42 +115,68 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -------------------------
-# MAIN FLOW (REAL PIPELINE)
+# MAIN FLOW
 # -------------------------
 if policy_file and claim_file:
 
     update_pipeline("📂 Upload Received")
 
-    # Extract
-    update_pipeline("📄 Extracting Policy Text...")
+    # -------------------------
+    # EXTRACT
+    # -------------------------
+    update_pipeline("📄 Extracting Documents...")
     policy_text = extract_text(policy_file)
-
-    update_pipeline("📄 Extracting Claim Text...")
     claim_text = extract_text(claim_file)
 
-    # Store + RAG
-    update_pipeline("📚 Storing & Retrieving Policy Context...")
+    show_log("📄 Extract Agent", f"""
+Policy:
+{policy_text[:800]}
+
+Claim:
+{claim_text[:800]}
+""")
+
+    # -------------------------
+    # RAG
+    # -------------------------
+    update_pipeline("📚 Retrieving Context...")
     store_policy(policy_text, policy_file.name)
     policy_context = get_policy_context(claim_text)
 
-    # Extract structured data
-    update_pipeline("🧠 Extracting Structured Fields...")
+    show_log("📚 RAG Agent", policy_context[:800])
+
+    # -------------------------
+    # STRUCTURED EXTRACTION
+    # -------------------------
+    update_pipeline("🧠 Extracting Fields...")
     claim_data = extract_fields(claim_text, "claim")
     policy_data = extract_fields(policy_text, "policy")
 
-    # Validation
-    update_pipeline("🔍 Running Validation Engine...")
+    show_log("🧠 Extractor", f"""
+Claim Data: {claim_data}
+Policy Data: {policy_data}
+""")
+
+    # -------------------------
+    # VALIDATION
+    # -------------------------
+    update_pipeline("🔍 Running Validation...")
     validation = validate_claim(claim_text, policy_text)
 
-    # Mandatory
-    update_pipeline("📋 Checking Mandatory Fields...")
-    missing = check_mandatory_fields(claim_data, policy_data)
+    show_log("🔍 Validation Agent", str(validation))
 
-    # Rule engine
-    update_pipeline("📅 Checking Policy Validity...")
+    # -------------------------
+    # RULE ENGINE
+    # -------------------------
+    update_pipeline("📋 Applying Rules...")
+    missing = check_mandatory_fields(claim_data, policy_data)
     date_check = check_policy_validity(claim_data, policy_data)
 
-    # Done
+    show_log("📋 Rule Engine", f"""
+Missing Fields: {missing}
+Policy Validity: {date_check}
+""")
+
     update_pipeline("✅ Processing Complete")
 
     # -------------------------
@@ -186,8 +229,10 @@ if policy_file and claim_file:
     # -------------------------
     if st.button("🚀 Analyze Claim"):
 
-        update_pipeline("🧠 Generating AI Decision...")
+        update_pipeline("🧠 Generating Decision...")
         result = generate_decision(claim_text, policy_context)
+
+        show_log("🧠 Decision Agent", str(result))
 
         decision = result.get("decision","").upper()
         confidence = result.get("confidence",0)
@@ -200,8 +245,10 @@ if policy_file and claim_file:
         with col2:
             st.markdown(f"<div class='kpi'><h3>Confidence</h3><h1>{confidence}%</h1></div>", unsafe_allow_html=True)
 
-        update_pipeline("🔁 Running Debate / Reflection...")
+        update_pipeline("🔁 Reflection / Debate...")
         _, _, final = debate(claim_text, policy_context)
+
+        show_log("🔁 Reflection Agent", final)
 
         update_pipeline("🏁 Final Decision Ready")
 
