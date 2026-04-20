@@ -12,6 +12,7 @@ from services.debate import debate
 from services.validator import validate_claim
 from services.extractor import extract_fields
 from services.rules import check_policy_validity
+from services.validation_rules import check_mandatory_fields
 
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
@@ -51,10 +52,10 @@ if policy_file and claim_file:
             st.error("❌ Error reading PDF")
             st.stop()
 
-        # Store policy (RAG)
+        # Store policy for RAG
         store_policy(policy_text, policy_file.name)
 
-        # Retrieve context
+        # Get RAG context
         policy_context = get_policy_context(claim_text)
 
         # -------------------------
@@ -69,6 +70,33 @@ if policy_file and claim_file:
         with colB:
             st.subheader("📚 Policy Context (RAG)")
             st.code(policy_context[:600])
+
+        st.divider()
+
+        # -------------------------
+        # EXTRACT STRUCTURED DATA
+        # -------------------------
+        claim_data = extract_fields(claim_text, "claim")
+        policy_data = extract_fields(policy_text, "policy")
+
+        # DEBUG (optional)
+        # st.json(claim_data)
+        # st.json(policy_data)
+
+        # -------------------------
+        # MANDATORY FIELD CHECK
+        # -------------------------
+        st.subheader("📋 Mandatory Field Check")
+
+        missing_fields = check_mandatory_fields(claim_data, policy_data)
+
+        if missing_fields:
+            st.error("❌ Missing Required Fields")
+            for field in missing_fields:
+                st.write(f"⚠️ {field}")
+            st.stop()
+        else:
+            st.success("✅ All mandatory fields present")
 
         st.divider()
 
@@ -90,12 +118,9 @@ if policy_file and claim_file:
         st.divider()
 
         # -------------------------
-        # DATE RULE ENGINE
+        # DATE RULE ENGINE (STRICT FIX)
         # -------------------------
         st.subheader("📅 Policy Validity Check")
-
-        claim_data = extract_fields(claim_text, "claim")
-        policy_data = extract_fields(policy_text, "policy")
 
         date_check = check_policy_validity(claim_data, policy_data)
 
@@ -105,7 +130,9 @@ if policy_file and claim_file:
             st.stop()
 
         elif date_check["valid"] is None:
-            st.warning("⚠️ " + date_check["reason"])
+            st.error("❌ Cannot Process Claim")
+            st.write("⚠️ Missing Incident Date in claim")
+            st.stop()   # 🚨 CRITICAL FIX
 
         else:
             st.success("✅ Policy Active for Incident")
@@ -123,7 +150,6 @@ if policy_file and claim_file:
 
             col1, col2 = st.columns(2)
 
-            # Decision
             with col1:
                 decision = result.get("decision", "N/A")
 
@@ -134,7 +160,6 @@ if policy_file and claim_file:
                 else:
                     st.warning(f"⚠️ {decision}")
 
-            # Confidence
             with col2:
                 st.metric("Confidence", f"{result.get('confidence', 0)}%")
 
