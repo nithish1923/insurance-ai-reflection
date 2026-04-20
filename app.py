@@ -1,6 +1,7 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import streamlit as st
+from services.validator import validate_claim
 from services.pdf_parser import extract_text
 from db.vectordb import store_policy
 from services.rag import get_policy_context
@@ -33,6 +34,17 @@ if claim_file:
     st.write(claim_text[:500])
 
     policy_context = get_policy_context(claim_text)
+
+    # -------- VALIDATION STEP --------
+is_valid, messages = validate_claim(claim_text, policy_context)
+
+if not is_valid:
+    st.error("❌ Validation Failed")
+    for msg in messages:
+        st.write(f"- {msg}")
+    st.stop()
+else:
+    st.success("✅ Validation Passed")
 
     st.subheader("📚 Policy Context")
     st.write(policy_context[:500])
