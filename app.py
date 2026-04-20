@@ -6,8 +6,6 @@ from services.pdf_parser import extract_text
 from db.vectordb import store_policy
 from services.rag import get_policy_context
 from services.generator import generate_decision
-from services.critic import critique
-from services.reflection import improve
 from services.debate import debate
 from services.validator import validate_claim
 from services.extractor import extract_fields
@@ -21,34 +19,28 @@ st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 # -------------------------
 st.markdown("""
 <style>
-.main {
-    background-color: #f7f9fc;
-}
-
 .card {
     background: white;
-    padding: 20px;
+    padding: 18px;
     border-radius: 12px;
-    box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.05);
+    text-align: center;
 }
+
+/* Status Colors */
+.success { color: #27ae60; font-weight:600; }
+.error { color: #e74c3c; font-weight:600; }
+.warning { color: #f39c12; font-weight:600; }
 
 .badge {
     padding: 6px 12px;
     border-radius: 8px;
     font-weight: 600;
-    font-size: 14px;
 }
 
-.approve { background-color: #eafaf1; color: #27ae60; }
-.reject { background-color: #fdecea; color: #e74c3c; }
-.conditional { background-color: #fff8e1; color: #f39c12; }
-
-.section-title {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
+.approve { background:#eafaf1; color:#27ae60; }
+.reject { background:#fdecea; color:#e74c3c; }
+.conditional { background:#fff8e1; color:#f39c12; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -78,32 +70,13 @@ st.divider()
 # -------------------------
 if policy_file and claim_file:
 
-    with st.spinner("⚙️ Processing documents..."):
+    with st.spinner("⚙️ Processing..."):
 
         policy_text = extract_text(policy_file)
         claim_text = extract_text(claim_file)
 
-        if not policy_text or not claim_text:
-            st.error("❌ Error reading PDF")
-            st.stop()
-
         store_policy(policy_text, policy_file.name)
         policy_context = get_policy_context(claim_text)
-
-        # -------------------------
-        # DISPLAY INPUTS
-        # -------------------------
-        colA, colB = st.columns(2)
-
-        with colA:
-            st.subheader("📌 Claim")
-            st.code(claim_text[:600])
-
-        with colB:
-            st.subheader("📚 Policy Context (RAG)")
-            st.code(policy_context[:600])
-
-        st.divider()
 
         # -------------------------
         # EXTRACT DATA
@@ -112,71 +85,94 @@ if policy_file and claim_file:
         policy_data = extract_fields(policy_text, "policy")
 
         # -------------------------
-        # MANDATORY CHECK
+        # 🧠 STATUS CARDS (SIDE BY SIDE)
         # -------------------------
-        st.subheader("📋 Mandatory Field Check")
+        colA, colB, colC = st.columns(3)
 
-        missing = check_mandatory_fields(claim_data, policy_data)
+        # -------- Mandatory --------
+        with colA:
+            missing = check_mandatory_fields(claim_data, policy_data)
 
-        if missing:
-            st.error("❌ Missing Required Fields")
-            for m in missing:
-                st.write(f"⚠️ {m}")
-            st.stop()
-        else:
-            st.success("✅ All mandatory fields present")
+            if missing:
+                st.markdown(f"""
+                <div class="card">
+                    <b>📋 Mandatory Check</b><br><br>
+                    <span class="error">❌ Missing</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            else:
+                st.markdown(f"""
+                <div class="card">
+                    <b>📋 Mandatory Check</b><br><br>
+                    <span class="success">✅ OK</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # -------- Validation --------
+        with colB:
+            validation = validate_claim(claim_text, policy_text)
+
+            if not validation.get("valid", True):
+                st.markdown(f"""
+                <div class="card">
+                    <b>🔍 Validation</b><br><br>
+                    <span class="error">❌ Failed</span>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="card">
+                    <b>🔍 Validation</b><br><br>
+                    <span class="success">✅ Passed</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # -------- Date Check --------
+        with colC:
+            date_check = check_policy_validity(claim_data, policy_data)
+
+            if date_check["valid"] is False:
+                st.markdown(f"""
+                <div class="card">
+                    <b>📅 Policy Check</b><br><br>
+                    <span class="error">❌ Inactive</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            elif date_check["valid"] is None:
+                st.markdown(f"""
+                <div class="card">
+                    <b>📅 Policy Check</b><br><br>
+                    <span class="warning">⚠️ Missing Date</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            else:
+                st.markdown(f"""
+                <div class="card">
+                    <b>📅 Policy Check</b><br><br>
+                    <span class="success">✅ Active</span>
+                </div>
+                """, unsafe_allow_html=True)
 
         st.divider()
 
-        # -------------------------
-        # VALIDATION
-        # -------------------------
-        st.subheader("🔍 Validation Engine")
-
-        validation = validate_claim(claim_text, policy_text)
-
-        if not validation.get("valid", True):
-            st.error("❌ Validation Failed")
-            for issue in validation.get("issues", []):
-                st.write(f"⚠️ {issue}")
-            st.stop()
-        else:
-            st.success("✅ Validation Passed")
-
-        st.divider()
-
-        # -------------------------
-        # DATE RULE ENGINE
-        # -------------------------
-        st.subheader("📅 Policy Validity Check")
-
-        date_check = check_policy_validity(claim_data, policy_data)
-
-        if date_check["valid"] is False:
-            st.error("❌ Policy Not Active")
-            st.write(date_check["reason"])
+        # 🚫 STOP if issues
+        if missing or not validation.get("valid", True) or date_check["valid"] is None or date_check["valid"] is False:
             st.stop()
 
-        elif date_check["valid"] is None:
-            st.error("❌ Cannot Process Claim")
-            st.write("⚠️ Missing Incident Date")
-            st.stop()
-
-        else:
-            st.success("✅ Policy Active")
-
-        st.divider()
-
         # -------------------------
-        # ANALYSIS
+        # ANALYZE
         # -------------------------
         if st.button("🚀 Analyze Claim", use_container_width=True):
 
             result = generate_decision(claim_text, policy_context)
 
-            decision = result.get("decision", "N/A").lower()
+            decision = result.get("decision", "").lower()
             confidence = result.get("confidence", 0)
 
+            # Badge
             if "approve" in decision:
                 badge = "approve"
                 icon = "✅"
@@ -192,46 +188,32 @@ if policy_file and claim_file:
             # -------------------------
             st.markdown(f"""
             <div class="card">
-                <div class="section-title">🧠 Decision Summary</div>
+                <b>🧠 Decision</b><br><br>
                 <span class="badge {badge}">
                     {icon} {decision.upper()}
-                </span>
-                <br><br>
-                <b>Confidence:</b> {confidence}%
+                </span><br><br>
+                Confidence: {confidence}%
             </div>
             """, unsafe_allow_html=True)
 
             # -------------------------
-            # BREAKDOWN
-            # -------------------------
-            st.markdown('<div class="card"><div class="section-title">📊 Decision Breakdown</div>', unsafe_allow_html=True)
-
-            for r in result.get("reasons", []):
-                st.markdown(f"✔️ {r}")
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-            # -------------------------
-            # EXPLAINABILITY
-            # -------------------------
-            st.markdown(f"""
-            <div class="card">
-                <div class="section-title">🧠 Explainability</div>
-                {result.get("explainability", "")}
-            </div>
-            """, unsafe_allow_html=True)
-
-            # -------------------------
-            # FINAL DECISION
+            # FINAL DECISION FIXED
             # -------------------------
             approve, reject, final = debate(claim_text, policy_context)
+            final_lower = final.lower()
 
-            if "reject" in final.lower():
-                color = "#fdecea"
-                border = "#e74c3c"
-            else:
+            if "final decision: approve" in final_lower:
                 color = "#eafaf1"
                 border = "#2ecc71"
+                icon = "✅"
+            elif "final decision: reject" in final_lower:
+                color = "#fdecea"
+                border = "#e74c3c"
+                icon = "❌"
+            else:
+                color = "#fff8e1"
+                border = "#f39c12"
+                icon = "⚠️"
 
             st.markdown(f"""
             <div style="
@@ -241,24 +223,10 @@ if policy_file and claim_file:
                 border-left:6px solid {border};
                 margin-top:20px;
             ">
-            <b>🏁 Final Decision</b><br><br>
+            <b>{icon} Final Decision</b><br><br>
             {final}
             </div>
             """, unsafe_allow_html=True)
 
-            # -------------------------
-            # REPORT
-            # -------------------------
-            report = f"""
-Decision: {decision}
-Confidence: {confidence}
-Reasons: {result.get("reasons")}
-Explainability: {result.get("explainability")}
-Final: {final}
-"""
-            st.download_button("📥 Download Report", report)
-
-        st.divider()
-
 else:
-    st.info("👆 Upload both Policy and Claim PDFs to begin")
+    st.info("👆 Upload both Policy and Claim PDFs")
