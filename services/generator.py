@@ -1,36 +1,48 @@
 from services.llm import call_llm
+import json
 
 def generate_decision(claim, policy):
 
-    return call_llm([
-        {
-            "role": "system",
-            "content": """
+    prompt = f"""
 You are an expert insurance claim analyst.
 
 STRICT RULES:
-- Only use the provided policy text
-- Do NOT assume any rules
-- If something is not mentioned → say "Not specified in policy"
-- Be realistic and professional
-"""
-        },
-        {
-            "role": "user",
-            "content": f"""
-Claim:
+- Only use given policy
+- Do NOT assume anything
+
+Return ONLY JSON:
+
+{{
+  "decision": "Approve / Reject / Partial / Conditional",
+  "approved_amount": number,
+  "confidence": number (0-100),
+  "reasons": ["reason1", "reason2"],
+  "explainability": "step-by-step explanation"
+}}
+
+---
+
+CLAIM:
 {claim}
 
-Policy:
+---
+
+POLICY:
 {policy}
-
-Task:
-Analyze the claim strictly based on policy.
-
-Output format:
-- Decision (Approve / Reject / Partial / Conditional)
-- Approved Amount
-- Reason (clear, policy-based)
 """
-        }
+
+    response = call_llm([
+        {"role": "system", "content": "You generate structured insurance decisions."},
+        {"role": "user", "content": prompt}
     ])
+
+    try:
+        return json.loads(response)
+    except:
+        return {
+            "decision": "Error",
+            "approved_amount": 0,
+            "confidence": 0,
+            "reasons": ["Failed to parse output"],
+            "explainability": response
+        }
