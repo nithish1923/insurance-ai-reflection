@@ -17,6 +17,42 @@ from services.validation_rules import check_mandatory_fields
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
 # -------------------------
+# 🎨 PREMIUM UI STYLE
+# -------------------------
+st.markdown("""
+<style>
+.main {
+    background-color: #f7f9fc;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.approve { background-color: #eafaf1; color: #27ae60; }
+.reject { background-color: #fdecea; color: #e74c3c; }
+.conditional { background-color: #fff8e1; color: #f39c12; }
+
+.section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------
 # HEADER
 # -------------------------
 st.title("🛡️ AI Insurance Claim Intelligence")
@@ -44,7 +80,6 @@ if policy_file and claim_file:
 
     with st.spinner("⚙️ Processing documents..."):
 
-        # Extract text
         policy_text = extract_text(policy_file)
         claim_text = extract_text(claim_file)
 
@@ -52,10 +87,7 @@ if policy_file and claim_file:
             st.error("❌ Error reading PDF")
             st.stop()
 
-        # Store policy for RAG
         store_policy(policy_text, policy_file.name)
-
-        # Get RAG context
         policy_context = get_policy_context(claim_text)
 
         # -------------------------
@@ -74,26 +106,22 @@ if policy_file and claim_file:
         st.divider()
 
         # -------------------------
-        # EXTRACT STRUCTURED DATA
+        # EXTRACT DATA
         # -------------------------
         claim_data = extract_fields(claim_text, "claim")
         policy_data = extract_fields(policy_text, "policy")
 
-        # DEBUG (optional)
-        # st.json(claim_data)
-        # st.json(policy_data)
-
         # -------------------------
-        # MANDATORY FIELD CHECK
+        # MANDATORY CHECK
         # -------------------------
         st.subheader("📋 Mandatory Field Check")
 
-        missing_fields = check_mandatory_fields(claim_data, policy_data)
+        missing = check_mandatory_fields(claim_data, policy_data)
 
-        if missing_fields:
+        if missing:
             st.error("❌ Missing Required Fields")
-            for field in missing_fields:
-                st.write(f"⚠️ {field}")
+            for m in missing:
+                st.write(f"⚠️ {m}")
             st.stop()
         else:
             st.success("✅ All mandatory fields present")
@@ -105,11 +133,11 @@ if policy_file and claim_file:
         # -------------------------
         st.subheader("🔍 Validation Engine")
 
-        validation_result = validate_claim(claim_text, policy_text)
+        validation = validate_claim(claim_text, policy_text)
 
-        if not validation_result.get("valid", True):
+        if not validation.get("valid", True):
             st.error("❌ Validation Failed")
-            for issue in validation_result.get("issues", []):
+            for issue in validation.get("issues", []):
                 st.write(f"⚠️ {issue}")
             st.stop()
         else:
@@ -118,7 +146,7 @@ if policy_file and claim_file:
         st.divider()
 
         # -------------------------
-        # DATE RULE ENGINE (STRICT FIX)
+        # DATE RULE ENGINE
         # -------------------------
         st.subheader("📅 Policy Validity Check")
 
@@ -131,11 +159,11 @@ if policy_file and claim_file:
 
         elif date_check["valid"] is None:
             st.error("❌ Cannot Process Claim")
-            st.write("⚠️ Missing Incident Date in claim")
-            st.stop()   # 🚨 CRITICAL FIX
+            st.write("⚠️ Missing Incident Date")
+            st.stop()
 
         else:
-            st.success("✅ Policy Active for Incident")
+            st.success("✅ Policy Active")
 
         st.divider()
 
@@ -146,110 +174,91 @@ if policy_file and claim_file:
 
             result = generate_decision(claim_text, policy_context)
 
-            st.subheader("🧠 Decision Summary")
+            decision = result.get("decision", "N/A").lower()
+            confidence = result.get("confidence", 0)
 
-            col1, col2 = st.columns(2)
+            if "approve" in decision:
+                badge = "approve"
+                icon = "✅"
+            elif "reject" in decision:
+                badge = "reject"
+                icon = "❌"
+            else:
+                badge = "conditional"
+                icon = "⚠️"
 
-            with col1:
-                decision = result.get("decision", "N/A")
-
-                if decision.lower() == "approve":
-                    st.success(f"✅ {decision}")
-                elif decision.lower() == "reject":
-                    st.error(f"❌ {decision}")
-                else:
-                    st.warning(f"⚠️ {decision}")
-
-            with col2:
-                st.metric("Confidence", f"{result.get('confidence', 0)}%")
-
-            st.divider()
+            # -------------------------
+            # DECISION CARD
+            # -------------------------
+            st.markdown(f"""
+            <div class="card">
+                <div class="section-title">🧠 Decision Summary</div>
+                <span class="badge {badge}">
+                    {icon} {decision.upper()}
+                </span>
+                <br><br>
+                <b>Confidence:</b> {confidence}%
+            </div>
+            """, unsafe_allow_html=True)
 
             # -------------------------
             # BREAKDOWN
             # -------------------------
-            st.subheader("📊 Decision Breakdown")
+            st.markdown('<div class="card"><div class="section-title">📊 Decision Breakdown</div>', unsafe_allow_html=True)
 
             for r in result.get("reasons", []):
-                st.write(f"✔️ {r}")
+                st.markdown(f"✔️ {r}")
 
-            st.divider()
+            st.markdown("</div>", unsafe_allow_html=True)
 
             # -------------------------
             # EXPLAINABILITY
             # -------------------------
-            st.subheader("🧠 Explainability")
-            st.info(result.get("explainability", ""))
-
-            st.divider()
-
-            # -------------------------
-            # REFLECTION
-            # -------------------------
-            tab1, tab2, tab3 = st.tabs([
-                "⚖️ Critic",
-                "🔁 Improved",
-                "🤖 Debate"
-            ])
-
-            with tab1:
-                feedback = critique(str(result))
-                st.write(feedback)
-
-            with tab2:
-                improved = improve(str(result), feedback)
-                st.write(improved)
-
-            with tab3:
-                approve, reject, final = debate(claim_text, policy_context)
-
-                colL, colR = st.columns(2)
-
-                with colL:
-                    st.markdown("### 👍 Approve Agent")
-                    st.write(approve)
-
-                with colR:
-                    st.markdown("### 👎 Reject Agent")
-                    st.write(reject)
-
-                st.markdown("### 🏁 Final Decision")
-                st.success(final)
-
-            st.divider()
+            st.markdown(f"""
+            <div class="card">
+                <div class="section-title">🧠 Explainability</div>
+                {result.get("explainability", "")}
+            </div>
+            """, unsafe_allow_html=True)
 
             # -------------------------
-            # REPORT DOWNLOAD
+            # FINAL DECISION
+            # -------------------------
+            approve, reject, final = debate(claim_text, policy_context)
+
+            if "reject" in final.lower():
+                color = "#fdecea"
+                border = "#e74c3c"
+            else:
+                color = "#eafaf1"
+                border = "#2ecc71"
+
+            st.markdown(f"""
+            <div style="
+                background:{color};
+                padding:20px;
+                border-radius:12px;
+                border-left:6px solid {border};
+                margin-top:20px;
+            ">
+            <b>🏁 Final Decision</b><br><br>
+            {final}
+            </div>
+            """, unsafe_allow_html=True)
+
+            # -------------------------
+            # REPORT
             # -------------------------
             report = f"""
-AI Insurance Claim Report
-
-Decision:
-{result.get("decision")}
-
-Confidence:
-{result.get("confidence")}
-
-Reasons:
-{result.get("reasons")}
-
-Explainability:
-{result.get("explainability")}
+Decision: {decision}
+Confidence: {confidence}
+Reasons: {result.get("reasons")}
+Explainability: {result.get("explainability")}
+Final: {final}
 """
-
             st.download_button("📥 Download Report", report)
 
         st.divider()
-
-        # -------------------------
-        # FEEDBACK
-        # -------------------------
-        st.subheader("⭐ Feedback")
-
-        rating = st.slider("Rate system output", 1, 5)
-
-        if st.button("Submit Feedback"):
-            st.success("✅ Feedback recorded!")
 
 else:
     st.info("👆 Upload both Policy and Claim PDFs to begin")
