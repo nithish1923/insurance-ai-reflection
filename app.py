@@ -1,5 +1,5 @@
 import streamlit as st
-import sys, os
+import sys, os, time
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.pdf_parser import extract_text
@@ -15,115 +15,65 @@ from services.validation_rules import check_mandatory_fields
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
 # -------------------------
-# 🌙 DARK MODE TOGGLE
+# 🌙 DARK MODE
 # -------------------------
 st.sidebar.markdown("### ⚙️ Settings")
 dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=False)
 
 # -------------------------
-# 🎨 GLOBAL STYLES (FIXED)
+# 🎨 STYLES
 # -------------------------
 if dark_mode:
-    st.markdown("""
-    <style>
-
-    .stApp {
-        background-color: #0f172a;
-        color: #e2e8f0;
-    }
-
-    h1, h2, h3, h4, h5, h6, p, div, span {
-        color: #e2e8f0 !important;
-    }
-
-    .upload-box {
-        background: #1e293b;
-        padding: 25px;
-        border-radius: 16px;
-    }
-
-    .file-info {
-        background: #334155;
-        padding: 10px;
-        border-radius: 8px;
-    }
-
-    .card {
-        background: #1e293b;
-        padding: 18px;
-        border-radius: 14px;
-        text-align: center;
-    }
-
-    .kpi {
-        background: #1e293b;
-        padding: 25px;
-        border-radius: 16px;
-        text-align: center;
-    }
-
-    .stButton>button {
-        background: linear-gradient(90deg,#6366f1,#8b5cf6);
-        color:white;
-        border-radius:12px;
-    }
-
-    .success { color:#22c55e !important; }
-    .error { color:#ef4444 !important; }
-    .warning { color:#facc15 !important; }
-
-    </style>
-    """, unsafe_allow_html=True)
-
+    bg = "#0f172a"
+    card = "#1e293b"
+    text = "#e2e8f0"
 else:
-    st.markdown("""
-    <style>
+    bg = "#f8fafc"
+    card = "white"
+    text = "#111827"
 
-    .stApp {
-        background: linear-gradient(180deg,#f8fafc,#eef2f7);
-    }
+st.markdown(f"""
+<style>
+.stApp {{
+    background:{bg};
+    color:{text};
+}}
 
-    .upload-box {
-        background:white;
-        padding:25px;
-        border-radius:16px;
-    }
+.upload-box {{
+    background:{card};
+    padding:25px;
+    border-radius:16px;
+}}
 
-    .file-info {
-        background:#f1f5f9;
-        padding:10px;
-        border-radius:8px;
-    }
+.card {{
+    background:{card};
+    padding:18px;
+    border-radius:14px;
+    text-align:center;
+}}
 
-    .card {
-        background:white;
-        padding:18px;
-        border-radius:14px;
-        text-align:center;
-    }
+.kpi {{
+    background:{card};
+    padding:25px;
+    border-radius:16px;
+    text-align:center;
+}}
 
-    .kpi {
-        background:white;
-        padding:25px;
-        border-radius:16px;
-        text-align:center;
-    }
+.stButton>button {{
+    background: linear-gradient(90deg,#4f46e5,#6366f1);
+    color:white;
+    border-radius:12px;
+}}
 
-    .stButton>button {
-        background: linear-gradient(90deg,#4f46e5,#6366f1);
-        color:white;
-        border-radius:12px;
-    }
+.success {{ color:#22c55e; }}
+.error {{ color:#ef4444; }}
+.warning {{ color:#f59e0b; }}
 
-    .success { color:#16a34a; }
-    .error { color:#dc2626; }
-    .warning { color:#f59e0b; }
-
-    </style>
-    """, unsafe_allow_html=True)
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------------
-# HEADER
+# 🌟 HEADER
 # -------------------------
 st.markdown("""
 <div style="text-align:center; padding:20px;">
@@ -132,10 +82,53 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+# -------------------------
+# 🚀 PIPELINE ANIMATION
+# -------------------------
+def run_pipeline():
+    placeholder = st.empty()
+    progress = st.progress(0)
+
+    steps = [
+        ("📂 Upload Received", 10),
+        ("📄 Extracting Text", 25),
+        ("📚 RAG Context Retrieval", 40),
+        ("🔍 Validation Engine", 55),
+        ("📋 Mandatory Check", 70),
+        ("📅 Rule Engine", 80),
+        ("🧠 AI Decision", 90),
+        ("🔁 Reflection Agent", 100)
+    ]
+
+    for step, val in steps:
+        placeholder.markdown(f"""
+        <div style="
+            background:{card};
+            padding:15px;
+            border-radius:10px;
+            text-align:center;
+        ">
+        {step}
+        </div>
+        """, unsafe_allow_html=True)
+
+        progress.progress(val)
+        time.sleep(0.5)
+
+    placeholder.markdown(f"""
+    <div style="
+        background:#16a34a;
+        padding:15px;
+        border-radius:10px;
+        text-align:center;
+        color:white;
+    ">
+    ✅ Pipeline Completed
+    </div>
+    """, unsafe_allow_html=True)
 
 # -------------------------
-# UPLOAD UI
+# 📂 UPLOAD
 # -------------------------
 st.markdown('<div class="upload-box">', unsafe_allow_html=True)
 st.markdown("### 📂 Upload Documents")
@@ -144,32 +137,20 @@ col1, col2 = st.columns(2)
 
 with col1:
     policy_file = st.file_uploader("Policy", type=["pdf"], label_visibility="collapsed")
-    if policy_file:
-        st.markdown(f"""
-        <div class="file-info">
-        📄 {policy_file.name}<br>
-        📦 {round(policy_file.size/1024,2)} KB
-        </div>
-        """, unsafe_allow_html=True)
 
 with col2:
     claim_file = st.file_uploader("Claim", type=["pdf"], label_visibility="collapsed")
-    if claim_file:
-        st.markdown(f"""
-        <div class="file-info">
-        🧾 {claim_file.name}<br>
-        📦 {round(claim_file.size/1024,2)} KB
-        </div>
-        """, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -------------------------
-# MAIN LOGIC
+# MAIN FLOW
 # -------------------------
 if policy_file and claim_file:
+
+    run_pipeline()
 
     policy_text = extract_text(policy_file)
     claim_text = extract_text(claim_file)
@@ -226,9 +207,13 @@ if policy_file and claim_file:
     if missing or not validation.get("valid", True) or date_check["valid"] != True:
         st.stop()
 
+    # -------------------------
+    # ANALYZE
+    # -------------------------
     if st.button("🚀 Analyze Claim"):
 
         result = generate_decision(claim_text, policy_context)
+
         decision = result.get("decision","").upper()
         confidence = result.get("confidence",0)
 
@@ -244,9 +229,9 @@ if policy_file and claim_file:
 
         _, _, final = debate(claim_text, policy_context)
 
-        if "final decision: approve" in final.lower():
+        if "approve" in final.lower():
             bg = "#ecfdf5"; border="#16a34a"
-        elif "final decision: reject" in final.lower():
+        elif "reject" in final.lower():
             bg = "#fef2f2"; border="#dc2626"
         else:
             bg = "#fffbeb"; border="#f59e0b"
