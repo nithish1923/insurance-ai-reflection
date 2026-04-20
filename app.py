@@ -1,5 +1,5 @@
 import streamlit as st
-import sys, os, time
+import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.pdf_parser import extract_text
@@ -15,65 +15,50 @@ from services.validation_rules import check_mandatory_fields
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
 # -------------------------
-# 🌙 DARK MODE
+# 🎨 CLEAN UI (NO DARK MODE)
 # -------------------------
-st.sidebar.markdown("### ⚙️ Settings")
-dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=False)
-
-# -------------------------
-# 🎨 STYLES
-# -------------------------
-if dark_mode:
-    bg = "#0f172a"
-    card = "#1e293b"
-    text = "#e2e8f0"
-else:
-    bg = "#f8fafc"
-    card = "white"
-    text = "#111827"
-
-st.markdown(f"""
+st.markdown("""
 <style>
-.stApp {{
-    background:{bg};
-    color:{text};
-}}
+.stApp {
+    background: linear-gradient(180deg,#f8fafc,#eef2f7);
+}
 
-.upload-box {{
-    background:{card};
+.upload-box {
+    background:white;
     padding:25px;
     border-radius:16px;
-}}
+}
 
-.card {{
-    background:{card};
+.card {
+    background:white;
     padding:18px;
     border-radius:14px;
     text-align:center;
-}}
+}
 
-.kpi {{
-    background:{card};
+.kpi {
+    background:white;
     padding:25px;
     border-radius:16px;
     text-align:center;
-}}
+}
 
-.stButton>button {{
-    background: linear-gradient(90deg,#4f46e5,#6366f1);
+.pipeline {
+    background:#111827;
     color:white;
-    border-radius:12px;
-}}
+    padding:12px;
+    border-radius:10px;
+    text-align:center;
+}
 
-.success {{ color:#22c55e; }}
-.error {{ color:#ef4444; }}
-.warning {{ color:#f59e0b; }}
-
+.success { color:#16a34a; }
+.error { color:#dc2626; }
+.warning { color:#f59e0b; }
 </style>
 """, unsafe_allow_html=True)
 
 # -------------------------
-# 🌟 HEADER
+# HEADER
 # -------------------------
 st.markdown("""
 <div style="text-align:center; padding:20px;">
@@ -83,52 +68,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -------------------------
-# 🚀 PIPELINE ANIMATION
+# PIPELINE PLACEHOLDER
 # -------------------------
-def run_pipeline():
-    placeholder = st.empty()
-    progress = st.progress(0)
+pipeline_placeholder = st.empty()
 
-    steps = [
-        ("📂 Upload Received", 10),
-        ("📄 Extracting Text", 25),
-        ("📚 RAG Context Retrieval", 40),
-        ("🔍 Validation Engine", 55),
-        ("📋 Mandatory Check", 70),
-        ("📅 Rule Engine", 80),
-        ("🧠 AI Decision", 90),
-        ("🔁 Reflection Agent", 100)
-    ]
-
-    for step, val in steps:
-        placeholder.markdown(f"""
-        <div style="
-            background:{card};
-            padding:15px;
-            border-radius:10px;
-            text-align:center;
-        ">
-        {step}
-        </div>
-        """, unsafe_allow_html=True)
-
-        progress.progress(val)
-        time.sleep(0.5)
-
-    placeholder.markdown(f"""
-    <div style="
-        background:#16a34a;
-        padding:15px;
-        border-radius:10px;
-        text-align:center;
-        color:white;
-    ">
-    ✅ Pipeline Completed
+def update_pipeline(step):
+    pipeline_placeholder.markdown(f"""
+    <div class="pipeline">
+    {step}
     </div>
     """, unsafe_allow_html=True)
 
 # -------------------------
-# 📂 UPLOAD
+# UPLOAD
 # -------------------------
 st.markdown('<div class="upload-box">', unsafe_allow_html=True)
 st.markdown("### 📂 Upload Documents")
@@ -146,26 +98,48 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -------------------------
-# MAIN FLOW
+# MAIN FLOW (REAL PIPELINE)
 # -------------------------
 if policy_file and claim_file:
 
-    run_pipeline()
+    update_pipeline("📂 Upload Received")
 
+    # Extract
+    update_pipeline("📄 Extracting Policy Text...")
     policy_text = extract_text(policy_file)
+
+    update_pipeline("📄 Extracting Claim Text...")
     claim_text = extract_text(claim_file)
 
+    # Store + RAG
+    update_pipeline("📚 Storing & Retrieving Policy Context...")
     store_policy(policy_text, policy_file.name)
     policy_context = get_policy_context(claim_text)
 
+    # Extract structured data
+    update_pipeline("🧠 Extracting Structured Fields...")
     claim_data = extract_fields(claim_text, "claim")
     policy_data = extract_fields(policy_text, "policy")
 
-    colA, colB, colC = st.columns(3)
-
-    missing = check_mandatory_fields(claim_data, policy_data)
+    # Validation
+    update_pipeline("🔍 Running Validation Engine...")
     validation = validate_claim(claim_text, policy_text)
+
+    # Mandatory
+    update_pipeline("📋 Checking Mandatory Fields...")
+    missing = check_mandatory_fields(claim_data, policy_data)
+
+    # Rule engine
+    update_pipeline("📅 Checking Policy Validity...")
     date_check = check_policy_validity(claim_data, policy_data)
+
+    # Done
+    update_pipeline("✅ Processing Complete")
+
+    # -------------------------
+    # STATUS CARDS
+    # -------------------------
+    colA, colB, colC = st.columns(3)
 
     with colA:
         st.markdown(f"""
@@ -208,10 +182,11 @@ if policy_file and claim_file:
         st.stop()
 
     # -------------------------
-    # ANALYZE
+    # DECISION
     # -------------------------
     if st.button("🚀 Analyze Claim"):
 
+        update_pipeline("🧠 Generating AI Decision...")
         result = generate_decision(claim_text, policy_context)
 
         decision = result.get("decision","").upper()
@@ -225,9 +200,10 @@ if policy_file and claim_file:
         with col2:
             st.markdown(f"<div class='kpi'><h3>Confidence</h3><h1>{confidence}%</h1></div>", unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-
+        update_pipeline("🔁 Running Debate / Reflection...")
         _, _, final = debate(claim_text, policy_context)
+
+        update_pipeline("🏁 Final Decision Ready")
 
         if "approve" in final.lower():
             bg = "#ecfdf5"; border="#16a34a"
@@ -247,8 +223,6 @@ if policy_file and claim_file:
         {final}
         </div>
         """, unsafe_allow_html=True)
-
-        st.download_button("📥 Download Report", final)
 
 else:
     st.info("👆 Upload documents to start")
