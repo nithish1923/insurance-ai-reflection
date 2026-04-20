@@ -10,6 +10,7 @@ from services.critic import critique
 from services.reflection import improve
 from services.debate import debate
 from services.validator import validate_claim
+from services.risk_engine import calculate_risk
 
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
@@ -71,7 +72,7 @@ if policy_file and claim_file:
         st.divider()
 
         # -------------------------
-        # VALIDATION (STRUCTURED)
+        # VALIDATION
         # -------------------------
         st.subheader("🔍 Validation Engine")
 
@@ -90,60 +91,77 @@ if policy_file and claim_file:
         st.divider()
 
         # -------------------------
-        # ANALYSIS BUTTON
+        # ANALYSIS
         # -------------------------
         if st.button("🚀 Analyze Claim", use_container_width=True):
 
-            # Step 1: Decision
-            decision = generate_decision(claim_text, policy_context)
+            # AI decision
+            result = generate_decision(claim_text, policy_context)
 
-            # Risk score (simple heuristic)
-            risk_score = 30 if "approve" in decision.lower() else 75
+            # Risk scoring
+            risk = calculate_risk(validation_result, claim_text)
 
-            # -------------------------
-            # DECISION SUMMARY
-            # -------------------------
             st.subheader("🧠 Decision Summary")
 
-            colX, colY = st.columns([2, 1])
+            col1, col2, col3 = st.columns(3)
 
-            with colX:
-                if "approve" in decision.lower():
-                    st.success("✅ APPROVED")
-                elif "reject" in decision.lower():
-                    st.error("❌ REJECTED")
+            # Decision
+            with col1:
+                decision = result.get("decision", "N/A")
+
+                if decision.lower() == "approve":
+                    st.success(f"✅ {decision}")
+                elif decision.lower() == "reject":
+                    st.error(f"❌ {decision}")
                 else:
-                    st.warning("⚠️ CONDITIONAL")
+                    st.warning(f"⚠️ {decision}")
 
-                st.write(decision)
+            # Confidence
+            with col2:
+                st.metric("Confidence", f"{result.get('confidence', 0)}%")
 
-            with colY:
-                st.metric("Risk Score", f"{risk_score}%")
-                st.progress(risk_score / 100)
+            # Risk
+            with col3:
+                st.metric("Risk", f"{risk['score']} ({risk['level']})")
+                st.progress(risk["score"] / 100)
 
             st.divider()
 
             # -------------------------
-            # TABS
+            # BREAKDOWN
             # -------------------------
-            tab1, tab2, tab3, tab4 = st.tabs([
+            st.subheader("📊 Decision Breakdown")
+
+            for r in result.get("reasons", []):
+                st.write(f"✔️ {r}")
+
+            st.divider()
+
+            # -------------------------
+            # EXPLAINABILITY
+            # -------------------------
+            st.subheader("🧠 Explainability")
+            st.info(result.get("explainability", ""))
+
+            st.divider()
+
+            # -------------------------
+            # REFLECTION
+            # -------------------------
+            tab1, tab2, tab3 = st.tabs([
                 "⚖️ Critic",
                 "🔁 Improved",
-                "🤖 Debate",
-                "📄 Report"
+                "🤖 Debate"
             ])
 
-            # Critic
             with tab1:
-                feedback = critique(decision)
+                feedback = critique(str(result))
                 st.write(feedback)
 
-            # Improved
             with tab2:
-                improved = improve(decision, feedback)
+                improved = improve(str(result), feedback)
                 st.write(improved)
 
-            # Debate
             with tab3:
                 approve, reject, final = debate(claim_text, policy_context)
 
@@ -160,24 +178,31 @@ if policy_file and claim_file:
                 st.markdown("### 🏁 Final Decision")
                 st.success(final)
 
-            # Report
-            with tab4:
-                report = f"""
+            st.divider()
+
+            # -------------------------
+            # REPORT DOWNLOAD
+            # -------------------------
+            report = f"""
 AI Insurance Claim Report
 
 Decision:
-{decision}
+{result.get("decision")}
 
-Critic:
-{feedback}
+Confidence:
+{result.get("confidence")}
 
-Improved:
-{improved}
+Risk:
+{risk}
 
-Final:
-{final}
+Reasons:
+{result.get("reasons")}
+
+Explainability:
+{result.get("explainability")}
 """
-                st.download_button("📥 Download Report", report)
+
+            st.download_button("📥 Download Report", report)
 
         st.divider()
 
