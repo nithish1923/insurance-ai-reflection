@@ -19,28 +19,45 @@ st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 # -------------------------
 st.markdown("""
 <style>
+.main {
+    background: linear-gradient(180deg, #f8fafc, #eef2f7);
+}
+
+/* Cards */
 .card {
-    background: white;
-    padding: 18px;
-    border-radius: 12px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.05);
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0px 6px 25px rgba(0,0,0,0.05);
+    text-align:center;
+}
+
+/* KPI */
+.kpi {
     text-align: center;
+    padding: 25px;
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
 }
 
-/* Status Colors */
-.success { color: #27ae60; font-weight:600; }
-.error { color: #e74c3c; font-weight:600; }
-.warning { color: #f39c12; font-weight:600; }
-
-.badge {
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: 600;
+/* Button */
+.stButton>button {
+    width:100%;
+    border-radius:12px;
+    padding:12px;
+    font-weight:600;
+    background: linear-gradient(90deg, #4f46e5, #6366f1);
+    color:white;
+    border:none;
 }
 
-.approve { background:#eafaf1; color:#27ae60; }
-.reject { background:#fdecea; color:#e74c3c; }
-.conditional { background:#fff8e1; color:#f39c12; }
+/* Status colors */
+.success { color:#16a34a; font-weight:600; }
+.error { color:#dc2626; font-weight:600; }
+.warning { color:#f59e0b; font-weight:600; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -53,7 +70,7 @@ st.caption("RAG • Validation • Rule Engine • Multi-Agent System")
 st.divider()
 
 # -------------------------
-# FILE UPLOAD
+# UPLOAD
 # -------------------------
 col1, col2 = st.columns(2)
 
@@ -85,148 +102,148 @@ if policy_file and claim_file:
         policy_data = extract_fields(policy_text, "policy")
 
         # -------------------------
-        # 🧠 STATUS CARDS (SIDE BY SIDE)
+        # STATUS CARDS (SIDE BY SIDE)
         # -------------------------
         colA, colB, colC = st.columns(3)
 
-        # -------- Mandatory --------
+        # Mandatory
+        missing = check_mandatory_fields(claim_data, policy_data)
         with colA:
-            missing = check_mandatory_fields(claim_data, policy_data)
-
             if missing:
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>📋 Mandatory Check</b><br><br>
-                    <span class="error">❌ Missing</span>
+                    <h4>📋 Mandatory</h4>
+                    <p class="error">❌ Missing</p>
                 </div>
                 """, unsafe_allow_html=True)
-
             else:
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>📋 Mandatory Check</b><br><br>
-                    <span class="success">✅ OK</span>
+                    <h4>📋 Mandatory</h4>
+                    <p class="success">✅ OK</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # -------- Validation --------
+        # Validation
+        validation = validate_claim(claim_text, policy_text)
         with colB:
-            validation = validate_claim(claim_text, policy_text)
-
             if not validation.get("valid", True):
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>🔍 Validation</b><br><br>
-                    <span class="error">❌ Failed</span>
+                    <h4>🔍 Validation</h4>
+                    <p class="error">❌ Failed</p>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>🔍 Validation</b><br><br>
-                    <span class="success">✅ Passed</span>
+                    <h4>🔍 Validation</h4>
+                    <p class="success">✅ Passed</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # -------- Date Check --------
+        # Policy Check
+        date_check = check_policy_validity(claim_data, policy_data)
         with colC:
-            date_check = check_policy_validity(claim_data, policy_data)
-
             if date_check["valid"] is False:
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>📅 Policy Check</b><br><br>
-                    <span class="error">❌ Inactive</span>
+                    <h4>📅 Policy</h4>
+                    <p class="error">❌ Inactive</p>
                 </div>
                 """, unsafe_allow_html=True)
-
             elif date_check["valid"] is None:
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>📅 Policy Check</b><br><br>
-                    <span class="warning">⚠️ Missing Date</span>
+                    <h4>📅 Policy</h4>
+                    <p class="warning">⚠️ Missing</p>
                 </div>
                 """, unsafe_allow_html=True)
-
             else:
-                st.markdown(f"""
+                st.markdown("""
                 <div class="card">
-                    <b>📅 Policy Check</b><br><br>
-                    <span class="success">✅ Active</span>
+                    <h4>📅 Policy</h4>
+                    <p class="success">✅ Active</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        st.divider()
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        # 🚫 STOP if issues
-        if missing or not validation.get("valid", True) or date_check["valid"] is None or date_check["valid"] is False:
+        # STOP if invalid
+        if missing or not validation.get("valid", True) or date_check["valid"] in [False, None]:
             st.stop()
 
         # -------------------------
-        # ANALYZE
+        # ANALYZE BUTTON
         # -------------------------
-        if st.button("🚀 Analyze Claim", use_container_width=True):
+        if st.button("🚀 Analyze Claim"):
 
             result = generate_decision(claim_text, policy_context)
 
-            decision = result.get("decision", "").lower()
+            decision = result.get("decision", "N/A").upper()
             confidence = result.get("confidence", 0)
 
-            # Badge
-            if "approve" in decision:
-                badge = "approve"
-                icon = "✅"
-            elif "reject" in decision:
-                badge = "reject"
-                icon = "❌"
-            else:
-                badge = "conditional"
-                icon = "⚠️"
+            # -------------------------
+            # KPI STRIP
+            # -------------------------
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown(f"""
+                <div class="kpi">
+                    <h3>🧠 Decision</h3>
+                    <h1>{decision}</h1>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown(f"""
+                <div class="kpi">
+                    <h3>📊 Confidence</h3>
+                    <h1>{confidence}%</h1>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
 
             # -------------------------
-            # DECISION CARD
-            # -------------------------
-            st.markdown(f"""
-            <div class="card">
-                <b>🧠 Decision</b><br><br>
-                <span class="badge {badge}">
-                    {icon} {decision.upper()}
-                </span><br><br>
-                Confidence: {confidence}%
-            </div>
-            """, unsafe_allow_html=True)
-
-            # -------------------------
-            # FINAL DECISION FIXED
+            # FINAL DECISION (FIXED)
             # -------------------------
             approve, reject, final = debate(claim_text, policy_context)
             final_lower = final.lower()
 
             if "final decision: approve" in final_lower:
-                color = "#eafaf1"
-                border = "#2ecc71"
-                icon = "✅"
+                bg = "#ecfdf5"
+                border = "#16a34a"
             elif "final decision: reject" in final_lower:
-                color = "#fdecea"
-                border = "#e74c3c"
-                icon = "❌"
+                bg = "#fef2f2"
+                border = "#dc2626"
             else:
-                color = "#fff8e1"
-                border = "#f39c12"
-                icon = "⚠️"
+                bg = "#fffbeb"
+                border = "#f59e0b"
 
             st.markdown(f"""
             <div style="
-                background:{color};
-                padding:20px;
-                border-radius:12px;
+                background:{bg};
+                padding:25px;
+                border-radius:16px;
                 border-left:6px solid {border};
-                margin-top:20px;
+                box-shadow:0px 4px 20px rgba(0,0,0,0.05);
             ">
-            <b>{icon} Final Decision</b><br><br>
-            {final}
+            <h3>🏁 Final Decision</h3>
+            <p>{final}</p>
             </div>
             """, unsafe_allow_html=True)
 
+            # -------------------------
+            # REPORT
+            # -------------------------
+            report = f"""
+Decision: {decision}
+Confidence: {confidence}
+Final: {final}
+"""
+            st.download_button("📥 Download Report", report)
+
 else:
-    st.info("👆 Upload both Policy and Claim PDFs")
+    st.info("👆 Upload Policy and Claim PDFs to begin")
