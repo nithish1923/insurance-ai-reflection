@@ -21,74 +21,121 @@ st.sidebar.markdown("### ⚙️ Settings")
 dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=False)
 
 # -------------------------
-# 🎨 DYNAMIC STYLES
+# 🎨 GLOBAL STYLES (FIXED)
 # -------------------------
 if dark_mode:
     st.markdown("""
     <style>
-    .main { background:#0f172a; color:#e2e8f0; }
 
-    .hero-title { color:#f8fafc; font-size:36px; font-weight:700; }
-    .hero-sub { color:#94a3b8; }
+    .stApp {
+        background-color: #0f172a;
+        color: #e2e8f0;
+    }
 
-    .upload-box { background:#1e293b; padding:25px; border-radius:16px; }
-    .file-info { background:#334155; padding:10px; border-radius:8px; }
+    h1, h2, h3, h4, h5, h6, p, div, span {
+        color: #e2e8f0 !important;
+    }
 
-    .card { background:#1e293b; padding:18px; border-radius:14px; text-align:center; }
-    .kpi { background:#1e293b; padding:25px; border-radius:16px; text-align:center; }
+    .upload-box {
+        background: #1e293b;
+        padding: 25px;
+        border-radius: 16px;
+    }
+
+    .file-info {
+        background: #334155;
+        padding: 10px;
+        border-radius: 8px;
+    }
+
+    .card {
+        background: #1e293b;
+        padding: 18px;
+        border-radius: 14px;
+        text-align: center;
+    }
+
+    .kpi {
+        background: #1e293b;
+        padding: 25px;
+        border-radius: 16px;
+        text-align: center;
+    }
 
     .stButton>button {
         background: linear-gradient(90deg,#6366f1,#8b5cf6);
-        color:white; border-radius:12px;
+        color:white;
+        border-radius:12px;
     }
 
-    .success { color:#22c55e; }
-    .error { color:#ef4444; }
-    .warning { color:#facc15; }
+    .success { color:#22c55e !important; }
+    .error { color:#ef4444 !important; }
+    .warning { color:#facc15 !important; }
+
     </style>
     """, unsafe_allow_html=True)
 
 else:
     st.markdown("""
     <style>
-    .main { background:linear-gradient(180deg,#f8fafc,#eef2f7); }
 
-    .hero-title { color:#111827; font-size:36px; font-weight:700; }
-    .hero-sub { color:#6b7280; }
+    .stApp {
+        background: linear-gradient(180deg,#f8fafc,#eef2f7);
+    }
 
-    .upload-box { background:white; padding:25px; border-radius:16px; }
-    .file-info { background:#f1f5f9; padding:10px; border-radius:8px; }
+    .upload-box {
+        background:white;
+        padding:25px;
+        border-radius:16px;
+    }
 
-    .card { background:white; padding:18px; border-radius:14px; text-align:center; }
-    .kpi { background:white; padding:25px; border-radius:16px; text-align:center; }
+    .file-info {
+        background:#f1f5f9;
+        padding:10px;
+        border-radius:8px;
+    }
+
+    .card {
+        background:white;
+        padding:18px;
+        border-radius:14px;
+        text-align:center;
+    }
+
+    .kpi {
+        background:white;
+        padding:25px;
+        border-radius:16px;
+        text-align:center;
+    }
 
     .stButton>button {
         background: linear-gradient(90deg,#4f46e5,#6366f1);
-        color:white; border-radius:12px;
+        color:white;
+        border-radius:12px;
     }
 
     .success { color:#16a34a; }
     .error { color:#dc2626; }
     .warning { color:#f59e0b; }
+
     </style>
     """, unsafe_allow_html=True)
 
 # -------------------------
-# 🌟 HERO HEADER
+# HEADER
 # -------------------------
 st.markdown("""
 <div style="text-align:center; padding:20px;">
-    <div class="hero-title">🛡️ AI Insurance Claim Intelligence</div>
-    <div class="hero-sub">
-        AI + Rule Engine + Multi-Agent Claim Decision System
-    </div>
+<h1>🛡️ AI Insurance Claim Intelligence</h1>
+<p>AI + Rule Engine + Multi-Agent Decision System</p>
 </div>
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -------------------------
-# 📂 UPLOAD UI
+# UPLOAD UI
 # -------------------------
 st.markdown('<div class="upload-box">', unsafe_allow_html=True)
 st.markdown("### 📂 Upload Documents")
@@ -120,7 +167,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -------------------------
-# MAIN FLOW
+# MAIN LOGIC
 # -------------------------
 if policy_file and claim_file:
 
@@ -133,9 +180,6 @@ if policy_file and claim_file:
     claim_data = extract_fields(claim_text, "claim")
     policy_data = extract_fields(policy_text, "policy")
 
-    # -------------------------
-    # STATUS CARDS
-    # -------------------------
     colA, colB, colC = st.columns(3)
 
     missing = check_mandatory_fields(claim_data, policy_data)
@@ -164,14 +208,11 @@ if policy_file and claim_file:
 
     with colC:
         if date_check["valid"] is True:
-            status = "✅ Active"
-            cls = "success"
+            status = "✅ Active"; cls = "success"
         elif date_check["valid"] is False:
-            status = "❌ Inactive"
-            cls = "error"
+            status = "❌ Inactive"; cls = "error"
         else:
-            status = "⚠️ Missing"
-            cls = "warning"
+            status = "⚠️ Missing"; cls = "warning"
 
         st.markdown(f"""
         <div class="card">
@@ -182,13 +223,9 @@ if policy_file and claim_file:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # STOP if invalid
     if missing or not validation.get("valid", True) or date_check["valid"] != True:
         st.stop()
 
-    # -------------------------
-    # ANALYZE
-    # -------------------------
     if st.button("🚀 Analyze Claim"):
 
         result = generate_decision(claim_text, policy_context)
@@ -205,7 +242,6 @@ if policy_file and claim_file:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # FINAL DECISION
         _, _, final = debate(claim_text, policy_context)
 
         if "final decision: approve" in final.lower():
@@ -221,7 +257,6 @@ if policy_file and claim_file:
             padding:25px;
             border-radius:16px;
             border-left:6px solid {border};
-            box-shadow:0px 4px 20px rgba(0,0,0,0.05);
         ">
         <h3>🏁 Final Decision</h3>
         {final}
