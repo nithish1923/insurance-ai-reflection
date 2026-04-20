@@ -15,123 +15,88 @@ from services.validation_rules import check_mandatory_fields
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
 # -------------------------
-# 🎨 PREMIUM GLOBAL STYLE
+# 🌙 DARK MODE TOGGLE
 # -------------------------
-st.markdown("""
-<style>
+st.sidebar.markdown("### ⚙️ Settings")
+dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=False)
 
-/* Page background */
-.main {
-    background: linear-gradient(180deg, #f8fafc, #eef2f7);
-}
+# -------------------------
+# 🎨 DYNAMIC STYLES
+# -------------------------
+if dark_mode:
+    st.markdown("""
+    <style>
+    .main { background:#0f172a; color:#e2e8f0; }
 
-/* Hero */
-.hero {
-    text-align: center;
-    padding: 30px 0px;
-}
+    .hero-title { color:#f8fafc; font-size:36px; font-weight:700; }
+    .hero-sub { color:#94a3b8; }
 
-.hero-title {
-    font-size: 38px;
-    font-weight: 700;
-}
+    .upload-box { background:#1e293b; padding:25px; border-radius:16px; }
+    .file-info { background:#334155; padding:10px; border-radius:8px; }
 
-.hero-sub {
-    font-size: 16px;
-    color: #6b7280;
-}
+    .card { background:#1e293b; padding:18px; border-radius:14px; text-align:center; }
+    .kpi { background:#1e293b; padding:25px; border-radius:16px; text-align:center; }
 
-/* Badge */
-.badge {
-    display: inline-block;
-    background: #eef2ff;
-    color: #4f46e5;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    margin-top: 10px;
-}
+    .stButton>button {
+        background: linear-gradient(90deg,#6366f1,#8b5cf6);
+        color:white; border-radius:12px;
+    }
 
-/* Upload box */
-.upload-box {
-    background: white;
-    padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0px 6px 25px rgba(0,0,0,0.05);
-}
+    .success { color:#22c55e; }
+    .error { color:#ef4444; }
+    .warning { color:#facc15; }
+    </style>
+    """, unsafe_allow_html=True)
 
-/* File info */
-.file-info {
-    background: #f1f5f9;
-    padding: 10px;
-    border-radius: 8px;
-    margin-top: 8px;
-    font-size: 14px;
-}
+else:
+    st.markdown("""
+    <style>
+    .main { background:linear-gradient(180deg,#f8fafc,#eef2f7); }
 
-/* Cards */
-.card {
-    background: rgba(255,255,255,0.9);
-    padding: 18px;
-    border-radius: 14px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.05);
-    text-align:center;
-}
+    .hero-title { color:#111827; font-size:36px; font-weight:700; }
+    .hero-sub { color:#6b7280; }
 
-/* KPI */
-.kpi {
-    padding: 25px;
-    border-radius: 16px;
-    background: white;
-    text-align:center;
-    box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
-}
+    .upload-box { background:white; padding:25px; border-radius:16px; }
+    .file-info { background:#f1f5f9; padding:10px; border-radius:8px; }
 
-/* Button */
-.stButton>button {
-    width:100%;
-    border-radius:12px;
-    padding:12px;
-    font-weight:600;
-    background: linear-gradient(90deg, #4f46e5, #6366f1);
-    color:white;
-}
+    .card { background:white; padding:18px; border-radius:14px; text-align:center; }
+    .kpi { background:white; padding:25px; border-radius:16px; text-align:center; }
 
-/* Colors */
-.success { color:#16a34a; font-weight:600; }
-.error { color:#dc2626; font-weight:600; }
-.warning { color:#f59e0b; font-weight:600; }
+    .stButton>button {
+        background: linear-gradient(90deg,#4f46e5,#6366f1);
+        color:white; border-radius:12px;
+    }
 
-</style>
-""", unsafe_allow_html=True)
+    .success { color:#16a34a; }
+    .error { color:#dc2626; }
+    .warning { color:#f59e0b; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # -------------------------
 # 🌟 HERO HEADER
 # -------------------------
 st.markdown("""
-<div class="hero">
+<div style="text-align:center; padding:20px;">
     <div class="hero-title">🛡️ AI Insurance Claim Intelligence</div>
     <div class="hero-sub">
-        Automated claim validation using AI + Rule Engine + Multi-Agent reasoning
+        AI + Rule Engine + Multi-Agent Claim Decision System
     </div>
-    <div class="badge">Production AI System</div>
 </div>
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -------------------------
-# 📂 UPLOAD SECTION
+# 📂 UPLOAD UI
 # -------------------------
 st.markdown('<div class="upload-box">', unsafe_allow_html=True)
-
 st.markdown("### 📂 Upload Documents")
 
 col1, col2 = st.columns(2)
 
 with col1:
     policy_file = st.file_uploader("Policy", type=["pdf"], label_visibility="collapsed")
-
     if policy_file:
         st.markdown(f"""
         <div class="file-info">
@@ -142,7 +107,6 @@ with col1:
 
 with col2:
     claim_file = st.file_uploader("Claim", type=["pdf"], label_visibility="collapsed")
-
     if claim_file:
         st.markdown(f"""
         <div class="file-info">
@@ -151,7 +115,7 @@ with col2:
         </div>
         """, unsafe_allow_html=True)
 
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -218,6 +182,7 @@ if policy_file and claim_file:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # STOP if invalid
     if missing or not validation.get("valid", True) or date_check["valid"] != True:
         st.stop()
 
@@ -266,4 +231,4 @@ if policy_file and claim_file:
         st.download_button("📥 Download Report", final)
 
 else:
-    st.info("👆 Upload documents to start analysis")
+    st.info("👆 Upload documents to start")
