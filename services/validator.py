@@ -1,64 +1,54 @@
+from services.extractor import extract_fields
 import re
+import unicodedata
 
+# -------- NORMALIZE NAME --------
 def normalize_name(name):
     if not name:
         return ""
 
-    # remove MR, MRS, etc.
+    # Unicode normalize (fix hidden chars)
+    name = unicodedata.normalize("NFKD", name)
+
+    # Remove titles (Mr, Dr, etc.)
     name = re.sub(r"\b(mr|mrs|ms|dr)\.?\b", "", name, flags=re.IGNORECASE)
 
-    # remove extra spaces
-    name = name.strip()
+    # Remove special characters
+    name = re.sub(r"[^a-zA-Z\s]", "", name)
 
-    # remove multiple spaces
+    # Normalize spaces
     name = re.sub(r"\s+", " ", name)
 
-    # lowercase
-    name = name.lower()
-
-    return name
-    
-from services.extractor import extract_fields
-
-INVALID_WORDS = ["motor", "policy", "liability", "period", "coverage"]
-
-def is_valid_name(name):
-    if not name:
-        return False
-
-    name_lower = name.lower()
-
-    # reject if contains invalid keywords
-    if any(word in name_lower for word in INVALID_WORDS):
-        return False
-
-    # reject if too short
-    if len(name.split()) < 2:
-        return False
-
-    return True
+    # Strip + lowercase
+    return name.strip().lower()
 
 
+# -------- VALIDATION --------
 def validate_claim(claim_text, policy_text):
 
     claim_data = extract_fields(claim_text, "claim")
     policy_data = extract_fields(policy_text, "policy")
 
-    claim_name = claim_data.get("name")
-    policy_name = policy_data.get("name")
+    claim_name = claim_data.get("name", "")
+    policy_name = policy_data.get("name", "")
+
+    claim_clean = normalize_name(claim_name)
+    policy_clean = normalize_name(policy_name)
+
+    # DEBUG (keep for now)
+    print("CLAIM RAW:", repr(claim_name))
+    print("POLICY RAW:", repr(policy_name))
+    print("CLAIM CLEAN:", repr(claim_clean))
+    print("POLICY CLEAN:", repr(policy_clean))
 
     issues = []
 
-    # 🔴 NAME VALIDATION
-    if not is_valid_name(policy_name):
-        issues.append("Could not reliably extract policy holder name")
-
-    elif not is_valid_name(claim_name):
-        issues.append("Could not reliably extract claimant name")
-
-    else:
-        if claim_name.lower() != policy_name.lower():
+    # 🔴 NAME VALIDATION (robust)
+    if claim_clean and policy_clean:
+        if claim_clean not in policy_clean and policy_clean not in claim_clean:
             issues.append(f"Name mismatch: {claim_name} vs {policy_name}")
+    else:
+        issues.append("Could not extract name properly")
 
     # 🔴 POLICY NUMBER
     if claim_data.get("policy_number") and policy_data.get("policy_number"):
