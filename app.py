@@ -1,3 +1,5 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import streamlit as st
 from services.pdf_parser import extract_text
 from db.vectordb import store_policy
