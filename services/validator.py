@@ -1,3 +1,23 @@
+import re
+
+def normalize_name(name):
+    if not name:
+        return ""
+
+    # remove MR, MRS, etc.
+    name = re.sub(r"\b(mr|mrs|ms|dr)\.?\b", "", name, flags=re.IGNORECASE)
+
+    # remove extra spaces
+    name = name.strip()
+
+    # remove multiple spaces
+    name = re.sub(r"\s+", " ", name)
+
+    # lowercase
+    name = name.lower()
+
+    return name
+    
 from services.extractor import extract_fields
 
 INVALID_WORDS = ["motor", "policy", "liability", "period", "coverage"]
