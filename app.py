@@ -1,83 +1,97 @@
 import streamlit as st
 import sys, os
-
-# Fix import paths (important for deployment)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Imports
 from services.pdf_parser import extract_text
+from db.vectordb import store_policy
 from services.rag import get_policy_context
 from services.generator import generate_decision
 from services.critic import critique
 from services.reflection import improve
 from services.debate import debate
-from services.validator import validate_claim
-from db.vectordb import store_policy
+from services.validator import dynamic_validate
 
-# ---------------- UI CONFIG ----------------
 st.set_page_config(page_title="AI Insurance Claim Reviewer", layout="wide")
 
 st.title("🛡️ AI Insurance Claim Reviewer")
 
-# ---------------- POLICY UPLOAD ----------------
+# -------------------------
+# Upload Policy
+# -------------------------
 st.header("📄 Upload Policy")
-policy_file = st.file_uploader("Upload Policy PDF", type=["pdf"], key="policy")
+policy_file = st.file_uploader("Upload Policy PDF", type=["pdf"])
 
 if policy_file:
     policy_text = extract_text(policy_file)
-    store_policy(policy_text, policy_file.name)
-    st.success("✅ Policy stored successfully!")
 
-# ---------------- CLAIM UPLOAD ----------------
+    if not policy_text:
+        st.error("❌ Could not read policy PDF")
+    else:
+        store_policy(policy_text, policy_file.name)
+        st.success("✅ Policy stored successfully!")
+
+# -------------------------
+# Upload Claim
+# -------------------------
 st.header("🧾 Upload Claim")
-claim_file = st.file_uploader("Upload Claim PDF", type=["pdf"], key="claim")
+claim_file = st.file_uploader("Upload Claim PDF", type=["pdf"])
 
 if claim_file:
-
-    # Step 1: Extract claim text
     claim_text = extract_text(claim_file)
+
+    if not claim_text:
+        st.error("❌ Could not read claim PDF")
+        st.stop()
 
     st.subheader("📌 Claim Extracted")
     st.write(claim_text[:500])
 
-    # Step 2: Retrieve policy context (RAG)
+    # -------------------------
+    # RAG Retrieval
+    # -------------------------
     policy_context = get_policy_context(claim_text)
 
     st.subheader("📚 Policy Context")
     st.write(policy_context[:500])
 
-    # ---------------- VALIDATION ----------------
-    st.subheader("🔍 Validation Check")
+    # -------------------------
+    # Dynamic Validation (AI)
+    # -------------------------
+    st.subheader("🔍 Validation Result")
 
-    is_valid, messages = validate_claim(claim_text, policy_context)
+    validation_result = dynamic_validate(claim_text, policy_context)
 
-    if not is_valid:
+    if not validation_result.get("valid", True):
         st.error("❌ Validation Failed")
-        for msg in messages:
-            st.write(f"- {msg}")
+
+        for issue in validation_result.get("issues", []):
+            st.write(f"- {issue}")
+
         st.stop()
     else:
         st.success("✅ Validation Passed")
 
-    # ---------------- PROCESS BUTTON ----------------
+    # -------------------------
+    # Process Claim
+    # -------------------------
     if st.button("🚀 Process Claim"):
 
-        # Step 3: Generator
+        # Step 1: Generate Decision
         decision = generate_decision(claim_text, policy_context)
         st.subheader("🧠 Initial Decision")
         st.write(decision)
 
-        # Step 4: Critic (Reflection)
+        # Step 2: Critic Feedback
         feedback = critique(decision)
         st.subheader("⚖️ Critic Feedback")
         st.write(feedback)
 
-        # Step 5: Improve
+        # Step 3: Improve Decision
         improved = improve(decision, feedback)
         st.subheader("🔁 Improved Decision")
         st.write(improved)
 
-        # Step 6: Multi-Agent Debate
+        # Step 4: Multi-Agent Debate
         approve, reject, final = debate(claim_text, policy_context)
 
         st.subheader("🧑‍💻 Approve Agent")
@@ -86,9 +100,13 @@ if claim_file:
         st.subheader("🧑‍⚖️ Reject Agent")
         st.write(reject)
 
-        st.subheader("🏁 Final Decision")
+        st.subheader("🏁 Final Decision (Judge)")
         st.write(final)
 
-# ---------------- FOOTER ----------------
-st.markdown("---")
-st.caption("AI Insurance Claim System | RAG + Reflection + Validation + Multi-Agent Debate")
+        # -------------------------
+        # Feedback System
+        # -------------------------
+        rating = st.slider("⭐ Rate Decision", 1, 5)
+
+        if st.button("Submit Feedback"):
+            st.success("✅ Feedback recorded!")
