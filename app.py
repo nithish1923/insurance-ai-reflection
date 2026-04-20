@@ -10,7 +10,8 @@ from services.critic import critique
 from services.reflection import improve
 from services.debate import debate
 from services.validator import validate_claim
-from services.risk_engine import calculate_risk
+from services.extractor import extract_fields
+from services.rules import check_policy_validity
 
 st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 
@@ -18,7 +19,7 @@ st.set_page_config(page_title="AI Insurance Intelligence", layout="wide")
 # HEADER
 # -------------------------
 st.title("🛡️ AI Insurance Claim Intelligence")
-st.caption("RAG • Validation • Reflection • Multi-Agent Decision System")
+st.caption("RAG • Validation • Rule Engine • Multi-Agent System")
 
 st.divider()
 
@@ -50,10 +51,10 @@ if policy_file and claim_file:
             st.error("❌ Error reading PDF")
             st.stop()
 
-        # Store policy for RAG
+        # Store policy (RAG)
         store_policy(policy_text, policy_file.name)
 
-        # Get RAG context
+        # Retrieve context
         policy_context = get_policy_context(claim_text)
 
         # -------------------------
@@ -80,13 +81,34 @@ if policy_file and claim_file:
 
         if not validation_result.get("valid", True):
             st.error("❌ Validation Failed")
-
             for issue in validation_result.get("issues", []):
                 st.write(f"⚠️ {issue}")
-
             st.stop()
         else:
             st.success("✅ Validation Passed")
+
+        st.divider()
+
+        # -------------------------
+        # DATE RULE ENGINE
+        # -------------------------
+        st.subheader("📅 Policy Validity Check")
+
+        claim_data = extract_fields(claim_text, "claim")
+        policy_data = extract_fields(policy_text, "policy")
+
+        date_check = check_policy_validity(claim_data, policy_data)
+
+        if date_check["valid"] is False:
+            st.error("❌ Policy Not Active")
+            st.write(date_check["reason"])
+            st.stop()
+
+        elif date_check["valid"] is None:
+            st.warning("⚠️ " + date_check["reason"])
+
+        else:
+            st.success("✅ Policy Active for Incident")
 
         st.divider()
 
@@ -95,15 +117,11 @@ if policy_file and claim_file:
         # -------------------------
         if st.button("🚀 Analyze Claim", use_container_width=True):
 
-            # AI decision
             result = generate_decision(claim_text, policy_context)
-
-            # Risk scoring
-            risk = calculate_risk(validation_result, claim_text)
 
             st.subheader("🧠 Decision Summary")
 
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
 
             # Decision
             with col1:
@@ -119,11 +137,6 @@ if policy_file and claim_file:
             # Confidence
             with col2:
                 st.metric("Confidence", f"{result.get('confidence', 0)}%")
-
-            # Risk
-            with col3:
-                st.metric("Risk", f"{risk['score']} ({risk['level']})")
-                st.progress(risk["score"] / 100)
 
             st.divider()
 
@@ -191,9 +204,6 @@ Decision:
 
 Confidence:
 {result.get("confidence")}
-
-Risk:
-{risk}
 
 Reasons:
 {result.get("reasons")}
