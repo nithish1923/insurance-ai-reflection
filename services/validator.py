@@ -1,34 +1,50 @@
-import re
+from services.llm import call_llm
+import json
 
-# -------- Extract field using regex --------
-def extract_field(text, field_name):
-    pattern = rf"{field_name}[:\-]\s*(.*)"
-    match = re.search(pattern, text, re.IGNORECASE)
-    return match.group(1).strip() if match else None
+def dynamic_validate(claim_text, policy_text):
 
+    prompt = f"""
+You are an insurance validation engine.
 
-# -------- Main validation function --------
-def validate_claim(claim_text, policy_text):
+Compare CLAIM and POLICY carefully.
 
-    claim_name = extract_field(claim_text, "Customer Name")
-    policy_name = extract_field(policy_text, "Insured Name")
+STRICT RULES:
+- Do NOT assume anything
+- Only use given text
+- Detect mismatches such as:
+  - Name mismatch
+  - Policy number mismatch
+  - Vehicle mismatch
+  - Missing required info
 
-    claim_policy_no = extract_field(claim_text, "Policy Number")
-    policy_no = extract_field(policy_text, "Policy No")
+Return ONLY valid JSON (no extra text):
 
-    errors = []
+{{
+  "valid": true/false,
+  "issues": ["issue1", "issue2"]
+}}
 
-    # 🔴 Name mismatch
-    if claim_name and policy_name:
-        if claim_name.lower() != policy_name.lower():
-            errors.append(f"Name mismatch: Claim by '{claim_name}', Policy holder is '{policy_name}'")
+-------------------
 
-    # 🔴 Policy number mismatch
-    if claim_policy_no and policy_no:
-        if claim_policy_no != policy_no:
-            errors.append(f"Policy number mismatch: Claim has '{claim_policy_no}', Policy is '{policy_no}'")
+CLAIM:
+{claim_text}
 
-    if errors:
-        return False, errors
+-------------------
 
-    return True, ["Validation passed"]
+POLICY:
+{policy_text}
+"""
+
+    response = call_llm([
+        {"role": "system", "content": "You are a strict validation engine."},
+        {"role": "user", "content": prompt}
+    ])
+
+    # Clean parsing (important)
+    try:
+        return json.loads(response)
+    except:
+        return {
+            "valid": True,
+            "issues": ["⚠️ Could not parse validation output"]
+        }
