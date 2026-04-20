@@ -1,7 +1,12 @@
 from openai import OpenAI
 import os
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    raise ValueError("❌ OPENAI_API_KEY not set")
+
+client = OpenAI(api_key=api_key)
 
 def call_llm(messages, temperature=0.3):
     response = client.chat.completions.create(
