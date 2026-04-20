@@ -1,52 +1,28 @@
-from services.llm import call_llm
-import json
+from services.extractor import extract_fields
 
-def dynamic_validate(claim_text, policy_text):
+def validate_claim(claim_text, policy_text):
 
-    prompt = f"""
-You are an insurance validation engine.
+    claim_data = extract_fields(claim_text, "claim")
+    policy_data = extract_fields(policy_text, "policy")
 
-Your job:
-Compare CLAIM and POLICY carefully and identify ONLY clear mismatches.
+    issues = []
 
-STRICT RULES:
-- Do NOT guess or assume
-- Only flag mismatches if explicitly different
-- If data is missing → DO NOT mark as mismatch
-- Be conservative (avoid false positives)
+    # Name check
+    if claim_data.get("name") and policy_data.get("name"):
+        if claim_data["name"].lower() != policy_data["name"].lower():
+            issues.append(f"Name mismatch: {claim_data['name']} vs {policy_data['name']}")
 
-Check only:
-1. Name mismatch (if both names clearly present)
-2. Policy number mismatch (if both present)
-3. Vehicle mismatch (if clearly different)
+    # Policy number check
+    if claim_data.get("policy_number") and policy_data.get("policy_number"):
+        if claim_data["policy_number"] != policy_data["policy_number"]:
+            issues.append(f"Policy number mismatch")
 
-Return ONLY JSON:
+    # Vehicle check
+    if claim_data.get("vehicle") and policy_data.get("vehicle"):
+        if claim_data["vehicle"].lower() not in policy_data["vehicle"].lower():
+            issues.append("Vehicle mismatch")
 
-{{
-  "valid": true/false,
-  "issues": []
-}}
+    if issues:
+        return {"valid": False, "issues": issues}
 
----
-
-CLAIM:
-{claim_text}
-
----
-
-POLICY:
-{policy_text}
-"""
-
-    response = call_llm([
-        {"role": "system", "content": "You are a strict but accurate validator."},
-        {"role": "user", "content": prompt}
-    ])
-
-    try:
-        return json.loads(response)
-    except:
-        return {
-            "valid": True,
-            "issues": ["⚠️ Validation parsing failed"]
-        }
+    return {"valid": True, "issues": []}
