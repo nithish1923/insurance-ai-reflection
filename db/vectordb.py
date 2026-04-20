@@ -1,4 +1,4 @@
-# Simple in-memory storage (no external dependencies)
+# 🚫 NO chromadb import here
 
 memory_store = []
 
