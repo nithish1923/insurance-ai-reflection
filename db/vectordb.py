@@ -1,13 +1,10 @@
-import chromadb
+# Simple in-memory storage (no dependencies)
 
-client = chromadb.Client()
-collection = client.get_or_create_collection("policy_docs")
+memory_store = []
 
 def store_policy(text, doc_id):
-    collection.add(documents=[text], ids=[doc_id])
+    memory_store.append(text)
 
 def retrieve_policy(query):
-    results = collection.query(query_texts=[query], n_results=2)
-    if results["documents"]:
-        return "\n".join(results["documents"][0])
-    return ""
+    # simple retrieval (first 2 docs)
+    return "\n".join(memory_store[:2])
