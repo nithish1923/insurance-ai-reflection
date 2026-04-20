@@ -6,45 +6,47 @@ def dynamic_validate(claim_text, policy_text):
     prompt = f"""
 You are an insurance validation engine.
 
-Compare CLAIM and POLICY carefully.
+Your job:
+Compare CLAIM and POLICY carefully and identify ONLY clear mismatches.
 
 STRICT RULES:
-- Do NOT assume anything
-- Only use given text
-- Detect mismatches such as:
-  - Name mismatch
-  - Policy number mismatch
-  - Vehicle mismatch
-  - Missing required info
+- Do NOT guess or assume
+- Only flag mismatches if explicitly different
+- If data is missing → DO NOT mark as mismatch
+- Be conservative (avoid false positives)
 
-Return ONLY valid JSON (no extra text):
+Check only:
+1. Name mismatch (if both names clearly present)
+2. Policy number mismatch (if both present)
+3. Vehicle mismatch (if clearly different)
+
+Return ONLY JSON:
 
 {{
   "valid": true/false,
-  "issues": ["issue1", "issue2"]
+  "issues": []
 }}
 
--------------------
+---
 
 CLAIM:
 {claim_text}
 
--------------------
+---
 
 POLICY:
 {policy_text}
 """
 
     response = call_llm([
-        {"role": "system", "content": "You are a strict validation engine."},
+        {"role": "system", "content": "You are a strict but accurate validator."},
         {"role": "user", "content": prompt}
     ])
 
-    # Clean parsing (important)
     try:
         return json.loads(response)
     except:
         return {
             "valid": True,
-            "issues": ["⚠️ Could not parse validation output"]
+            "issues": ["⚠️ Validation parsing failed"]
         }
